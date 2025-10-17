@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Bluetooth Bitrate Manager
+Comment=Monitor and configure Bluetooth audio bitrate
+Exec=bluetooth-bitrate-gui
+Icon=bluetooth
+Terminal=false
+Categories=Audio;System;Settings;
+Keywords=bluetooth;audio;bitrate;codec;sbc;

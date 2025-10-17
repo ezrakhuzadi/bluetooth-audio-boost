@@ -1,0 +1,45 @@
+diff --git a/spa/plugins/bluez5/a2dp-codec-sbc.c b/spa/plugins/bluez5/a2dp-codec-sbc.c
+index fc55a03..935a4e0 100644
+--- a/spa/plugins/bluez5/a2dp-codec-sbc.c
++++ b/spa/plugins/bluez5/a2dp-codec-sbc.c
+@@ -79,8 +79,10 @@ static uint8_t default_bitpool(uint8_t freq, uint8_t mode, bool xq)
+ 	case SBC_SAMPLING_FREQ_44100:
+ 		switch (mode) {
+ 		case SBC_CHANNEL_MODE_MONO:
+-		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
+ 			return xq ? 43 : 32;
++		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
++			/* Custom bitpool 58 for dual channel SBC-XQ at 44.1 kHz */
++			return xq ? 58 : 32;
+
+ 		case SBC_CHANNEL_MODE_STEREO:
+ 		case SBC_CHANNEL_MODE_JOINT_STEREO:
+@@ -90,8 +92,10 @@ static uint8_t default_bitpool(uint8_t freq, uint8_t mode, bool xq)
+ 	case SBC_SAMPLING_FREQ_48000:
+ 		switch (mode) {
+ 		case SBC_CHANNEL_MODE_MONO:
+-		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
+ 			return xq ? 39 : 29;
++		case SBC_CHANNEL_MODE_DUAL_CHANNEL:
++			/* Custom bitpool 63 for dual channel SBC-XQ at 48 kHz */
++			return xq ? 63 : 29;
+
+ 		case SBC_CHANNEL_MODE_STEREO:
+ 		case SBC_CHANNEL_MODE_JOINT_STEREO:
+@@ -204,8 +208,14 @@ static int codec_select_config(const struct media_codec *codec, uint32_t flags,
+
+ 	bitpool = default_bitpool(conf.frequency, conf.channel_mode, xq);
+
+-	conf.min_bitpool = SPA_MAX(SBC_MIN_BITPOOL, conf.min_bitpool);
+-	conf.max_bitpool = SPA_MIN(bitpool, conf.max_bitpool);
++	if (xq && conf.channel_mode == SBC_CHANNEL_MODE_DUAL_CHANNEL) {
++		/* Override sink limits: enforce high bitpool for SBC-XQ dual channel. */
++		conf.min_bitpool = bitpool;
++		conf.max_bitpool = bitpool;
++	} else {
++		conf.min_bitpool = SPA_MAX(SBC_MIN_BITPOOL, conf.min_bitpool);
++		conf.max_bitpool = SPA_MIN(bitpool, conf.max_bitpool);
++	}
+ 	memcpy(config, &conf, sizeof(conf));
+
+ 	return sizeof(conf);

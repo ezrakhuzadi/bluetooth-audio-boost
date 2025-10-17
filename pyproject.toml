@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bluetooth-bitrate-manager"
+version = "0.1.0"
+description = "Monitor and configure Bluetooth audio bitrate on Linux."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+  { name = "Ezra", email = "ezra@example.com" }
+]
+dependencies = [
+  "pygobject",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Environment :: X11 Applications :: GTK",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: POSIX :: Linux",
+]
+
+[project.scripts]
+bluetooth-bitrate-gui = "bluetooth_bitrate_manager.gui:main"
+bt-bitrate-monitor = "bluetooth_bitrate_manager.monitor:main"
+
+[tool.setuptools.packages.find]
+include = ["bluetooth_bitrate_manager*"]
+
+[tool.setuptools.package-data]
+"bluetooth_bitrate_manager" = ["resources/*"]

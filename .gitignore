@@ -1,0 +1,23 @@
+# Build artifacts
+build/
+dist/
+
+# Python packaging metadata
+*.egg-info/
+*.egg
+
+# Bytecode
+__pycache__/
+*.pyc
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Local configuration
+.venv/
+.env
+.DS_Store
+.claude/

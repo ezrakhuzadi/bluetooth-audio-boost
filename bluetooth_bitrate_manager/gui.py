@@ -16,8 +16,10 @@ import sys
 import shutil
 import tempfile
 import time
+import shlex
 from pathlib import Path
 from typing import Optional, Sequence
+from functools import lru_cache
 
 from . import bitrate_utils
 
@@ -26,6 +28,8 @@ BIN_MKDIR = shutil.which("mkdir") or "/usr/bin/mkdir"
 SUDO_PATH = shutil.which("sudo")
 PKEXEC_PATH = shutil.which("pkexec")
 TRUE_PATH = shutil.which("true") or "/usr/bin/true"
+FLATPAK_SPAWN = shutil.which("flatpak-spawn")
+IS_FLATPAK = os.path.exists("/.flatpak-info") or os.getenv("FLATPAK_ID")
 _sudo_keepalive_thread = None
 _sudo_keepalive_lock = threading.Lock()
 
@@ -71,8 +75,50 @@ def ensure_sudo_ticket():
             _sudo_keepalive_thread = thread
 
 
+def _host_command(args: Sequence[str]) -> Sequence[str]:
+    if IS_FLATPAK:
+        if not FLATPAK_SPAWN:
+            raise RuntimeError("flatpak-spawn not available inside sandbox environment.")
+        return ['flatpak-spawn', '--host', *args]
+    return args
+
+
+@lru_cache(maxsize=None)
+def _host_has(command: str) -> bool:
+    if not IS_FLATPAK:
+        return shutil.which(command) is not None
+    if not FLATPAK_SPAWN:
+        return False
+    try:
+        check = subprocess.run(
+            [FLATPAK_SPAWN, '--host', 'sh', '-c', f'command -v {shlex.quote(command)}'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return check.returncode == 0
+    except Exception:
+        return False
+
+
 def run_privileged_command(args, text_input: Optional[str] = None):
     """Execute a command requiring elevated privileges using pkexec or sudo."""
+    if IS_FLATPAK:
+        if _host_has("pkexec"):
+            command = _host_command(['pkexec', *args])
+        elif _host_has("sudo"):
+            command = _host_command(['sudo', *args])
+        elif _host_has(args[0]):
+            command = _host_command(list(args))
+        else:
+            raise RuntimeError("No privileged helper (pkexec/sudo) available on host.")
+
+        return subprocess.run(
+            command,
+            input=text_input,
+            text=True,
+            capture_output=True,
+        )
+
     if PKEXEC_PATH:
         command = [PKEXEC_PATH] + args
     elif SUDO_PATH and _have_tty():
@@ -94,6 +140,9 @@ def run_privileged_command(args, text_input: Optional[str] = None):
 
 def initialize_privileges():
     """Attempt to cache elevated privileges once at startup."""
+    if IS_FLATPAK:
+        return
+
     if SUDO_PATH and _have_tty():
         ensure_sudo_ticket()
         return
@@ -683,7 +732,11 @@ class BluetoothBitrateWindow(Adw.ApplicationWindow):
                 # Generate custom patch
                 repo_root = Path(__file__).resolve().parent
                 resources_dir = repo_root / "resources"
-                custom_patch_path = resources_dir / "pipewire-sbc-custom-bitpool.patch"
+
+                # Write to user cache directory instead of system package directory
+                cache_dir = Path.home() / ".cache" / "bluetooth-bitrate-manager"
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                custom_patch_path = cache_dir / "pipewire-sbc-custom-bitpool.patch"
 
                 patch_content = f"""diff --git a/spa/plugins/bluez5/a2dp-codec-sbc.c b/spa/plugins/bluez5/a2dp-codec-sbc.c
 index fc55a03..935a4e0 100644
@@ -804,8 +857,39 @@ index fc55a03..935a4e0 100644
                     GLib.idle_add(button.set_sensitive, True)
                     return
 
+                # Detect if running in Flatpak
+                is_flatpak = os.path.exists('/.flatpak-info') or os.getenv('FLATPAK_ID')
+
+                if is_flatpak:
+                    # Copy build script and patch to host-accessible location
+                    host_script_dir = Path.home() / '.local/share/bluetooth-bitrate-manager'
+                    host_script_dir.mkdir(parents=True, exist_ok=True)
+                    host_build_script = host_script_dir / 'build_high_bitpool.sh'
+                    host_patch = host_script_dir / 'custom_patch.diff'
+
+                    # Copy files to host-accessible location
+                    shutil.copy2(str(build_script), str(host_build_script))
+                    shutil.copy2(str(custom_patch_path), str(host_patch))
+
+                    # Make script executable
+                    host_build_script.chmod(0o755)
+
+                    # Execute on host using flatpak-spawn with env variable
+                    # Must use --env to pass environment variables to host
+                    command = [
+                        'flatpak-spawn', '--host',
+                        '--env=PATCH_FILE=' + str(host_patch),
+                        'bash', str(host_build_script)
+                    ]
+
+                    GLib.idle_add(self.log_to_buffer,
+                                "Running build script on host system (outside sandbox)...\n")
+                else:
+                    # Normal execution (non-Flatpak)
+                    command = ['bash', str(build_script)]
+
                 process = subprocess.Popen(
-                    ['bash', str(build_script)],
+                    command,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
@@ -839,8 +923,12 @@ index fc55a03..935a4e0 100644
         """Restart PipeWire services"""
         self.log_to_buffer("Restarting PipeWire...\n")
         try:
+            command = _host_command([
+                'systemctl', '--user', 'restart',
+                'pipewire', 'pipewire-pulse', 'wireplumber'
+            ])
             result = subprocess.run(
-                ['systemctl', '--user', 'restart', 'pipewire', 'pipewire-pulse', 'wireplumber'],
+                command,
                 capture_output=True, text=True
             )
             if result.returncode == 0:
@@ -892,7 +980,7 @@ class BluetoothBitrateApp(Adw.Application):
     """Main application"""
 
     def __init__(self):
-        super().__init__(application_id='com.github.bluetooth-bitrate-manager')
+        super().__init__(application_id='com.github.ezrakhuzadi.BluetoothBitrateManager')
         self.window = None
 
     def do_activate(self):

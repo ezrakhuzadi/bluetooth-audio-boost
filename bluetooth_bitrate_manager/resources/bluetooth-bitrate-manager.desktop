@@ -7,3 +7,5 @@ Icon=bluetooth
 Terminal=false
 Categories=Audio;System;Settings;
 Keywords=bluetooth;audio;bitrate;codec;sbc;
+StartupNotify=true
+StartupWMClass=com.github.ezrakhuzadi.BluetoothBitrateManager

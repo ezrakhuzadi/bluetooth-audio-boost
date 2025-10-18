@@ -23,6 +23,7 @@ classifiers = [
 ]
 
 [project.scripts]
+bluetooth-bitrate-manager = "bluetooth_bitrate_manager.gui:main"
 bluetooth-bitrate-gui = "bluetooth_bitrate_manager.gui:main"
 bt-bitrate-monitor = "bluetooth_bitrate_manager.monitor:main"
 

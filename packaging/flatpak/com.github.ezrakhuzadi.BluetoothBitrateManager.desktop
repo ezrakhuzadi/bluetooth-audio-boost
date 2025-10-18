@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Bluetooth Bitrate Manager
+Comment=Monitor and manage PipeWire Bluetooth audio codecs
+Exec=bluetooth-bitrate-gui
+Icon=com.github.ezrakhuzadi.BluetoothBitrateManager
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;GTK;GNOME;
+Keywords=bluetooth;audio;pipewire;codec;bitrate;sbc;
+StartupNotify=true
+StartupWMClass=com.github.ezrakhuzadi.BluetoothBitrateManager

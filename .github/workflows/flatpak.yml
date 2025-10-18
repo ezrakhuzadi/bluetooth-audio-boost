@@ -1,0 +1,233 @@
+name: Build and Publish Flatpak
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    env:
+      ARCHES: "x86_64 aarch64"
+      RUNTIME_VERSION: "49"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y flatpak flatpak-builder gnupg qemu-user-static
+
+    - name: Add Flathub repository
+      run: |
+        sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+    - name: Install GNOME SDK (all architectures)
+      run: |
+        for arch in $ARCHES; do
+          sudo flatpak install -y --arch="${arch}" flathub \
+            org.gnome.Platform//${RUNTIME_VERSION} \
+            org.gnome.Sdk//${RUNTIME_VERSION}
+        done
+
+    - name: Ensure signing key secret is present
+      run: |
+        if [ -z "${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}" ]; then
+          echo "::error::The FLATPAK_GPG_PRIVATE_KEY secret is required to sign the Flatpak repository." >&2
+          exit 1
+        fi
+
+    - name: Import Flatpak signing key
+      env:
+        FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        FLATPAK_GPG_PASSPHRASE: ${{ secrets.FLATPAK_GPG_PASSPHRASE }}
+      run: |
+        export GNUPGHOME="$RUNNER_TEMP/gnupg"
+        mkdir -p "$GNUPGHOME"
+        chmod 700 "$GNUPGHOME"
+        echo "pinentry-mode loopback" > "$GNUPGHOME/gpg.conf"
+        cat <<EOF > "$GNUPGHOME/gpg-agent.conf"
+        allow-loopback-pinentry
+        max-cache-ttl 21600
+        default-cache-ttl 21600
+        EOF
+        gpgconf --homedir "$GNUPGHOME" --kill gpg-agent
+        printf '%s' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --homedir "$GNUPGHOME" --import
+        KEY_ID=$(gpg --batch --homedir "$GNUPGHOME" --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')
+        if [ -z "$KEY_ID" ]; then
+          echo "::error::Unable to determine signing key ID after import." >&2
+          exit 1
+        fi
+        echo "FLATPAK_GPG_KEY_ID=$KEY_ID" >> "$GITHUB_ENV"
+        echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+        if [ -n "$FLATPAK_GPG_PASSPHRASE" ]; then
+          dummy_file="$RUNNER_TEMP/dummy.txt"
+          echo "flatpak-signature-warmup" > "$dummy_file"
+          gpg --batch --yes --homedir "$GNUPGHOME" --passphrase "$FLATPAK_GPG_PASSPHRASE" --pinentry-mode loopback --local-user "$KEY_ID" --sign "$dummy_file" >/dev/null 2>&1
+          rm -f "$dummy_file" "$dummy_file.gpg" "$dummy_file.sig"
+        fi
+
+    - name: Create Flatpak manifest
+      run: |
+        mkdir -p flatpak-build
+        cat > flatpak-build/com.github.ezrakhuzadi.BluetoothBitrateManager.yml <<'EOF'
+        app-id: com.github.ezrakhuzadi.BluetoothBitrateManager
+        runtime: org.gnome.Platform
+        runtime-version: '49'
+        sdk: org.gnome.Sdk
+        command: bluetooth-bitrate-gui
+
+        finish-args:
+          - --share=ipc
+          - --socket=fallback-x11
+          - --socket=wayland
+          - --socket=pulseaudio
+          - --socket=session-bus
+          - --system-talk-name=org.bluez
+          - --talk-name=org.freedesktop.Flatpak
+          - --filesystem=home
+          - --filesystem=xdg-run/pipewire-0:ro
+          - --device=all
+
+        modules:
+          - name: bluetooth-bitrate-manager
+            buildsystem: simple
+            build-commands:
+              - pip3 install --verbose --prefix=${FLATPAK_DEST} --no-build-isolation .
+              - install -Dm644 packaging/flatpak/com.github.ezrakhuzadi.BluetoothBitrateManager.desktop ${FLATPAK_DEST}/share/applications/com.github.ezrakhuzadi.BluetoothBitrateManager.desktop
+              - install -Dm644 packaging/flatpak/com.github.ezrakhuzadi.BluetoothBitrateManager.metainfo.xml ${FLATPAK_DEST}/share/metainfo/com.github.ezrakhuzadi.BluetoothBitrateManager.metainfo.xml
+              - install -Dm644 LICENSE ${FLATPAK_DEST}/share/licenses/bluetooth-bitrate-manager/LICENSE
+              - install -Dm644 packaging/flatpak/com.github.ezrakhuzadi.BluetoothBitrateManager.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/com.github.ezrakhuzadi.BluetoothBitrateManager.svg
+              - |
+                install -Dm755 /dev/stdin ${FLATPAK_DEST}/bin/bluetooth-bitrate-gui <<'SCRIPTEOF'
+                #!/bin/sh
+                exec python3 -m bluetooth_bitrate_manager.gui "$@"
+                SCRIPTEOF
+              - |
+                install -Dm755 /dev/stdin ${FLATPAK_DEST}/bin/bluetooth-bitrate-manager <<'SCRIPTEOF'
+                #!/bin/sh
+                exec python3 -m bluetooth_bitrate_manager.monitor "$@"
+                SCRIPTEOF
+              - |
+                install -Dm755 /dev/stdin ${FLATPAK_DEST}/bin/bt-bitrate-monitor <<'SCRIPTEOF'
+                #!/bin/sh
+                exec python3 -m bluetooth_bitrate_manager.monitor "$@"
+                SCRIPTEOF
+
+            sources:
+              - type: dir
+                path: ..
+        EOF
+
+    - name: Build Flatpak
+      run: |
+        cd flatpak-build
+        rm -rf repo
+        mkdir -p repo
+        for arch in $ARCHES; do
+          build_dir="build-dir-${arch}"
+          flatpak-builder \
+            --force-clean \
+            --repo=repo \
+            --arch="${arch}" \
+            --gpg-homedir="${GNUPGHOME}" \
+            --gpg-sign="${FLATPAK_GPG_KEY_ID}" \
+            "${build_dir}" \
+            com.github.ezrakhuzadi.BluetoothBitrateManager.yml
+        done
+
+    - name: Create bundle
+      run: |
+        cd flatpak-build
+        for arch in $ARCHES; do
+          bundle="com.github.ezrakhuzadi.BluetoothBitrateManager-${arch}.flatpak"
+          flatpak build-bundle repo "${bundle}" com.github.ezrakhuzadi.BluetoothBitrateManager --arch="${arch}"
+        done
+        cp com.github.ezrakhuzadi.BluetoothBitrateManager-x86_64.flatpak com.github.ezrakhuzadi.BluetoothBitrateManager.flatpak
+
+    - name: Generate static index
+      run: |
+        cd flatpak-build
+        flatpak build-update-repo --generate-static-deltas --gpg-homedir="${GNUPGHOME}" --gpg-sign="${FLATPAK_GPG_KEY_ID}" repo
+
+        # Create index.html
+        cat > repo/index.html <<'HTML'
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Bluetooth Bitrate Manager - Flatpak Repository</title>
+          <style>
+            body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
+            code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+            pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+          </style>
+        </head>
+        <body>
+          <h1>Bluetooth Bitrate Manager</h1>
+          <p>Monitor and manage PipeWire Bluetooth audio codecs</p>
+
+          <h2>Installation</h2>
+
+          <h3>Download signing key:</h3>
+          <pre>wget https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/bluetooth-bitrate.gpg</pre>
+
+          <h3>Add this repository:</h3>
+          <pre>flatpak remote-add --user --gpg-import=bluetooth-bitrate.gpg bluetooth-bitrate https://ezrakhuzadi.github.io/bluetooth-bitrate-manager</pre>
+
+          <p><strong>Note:</strong> All repository files are served from <code>https://ezrakhuzadi.github.io/bluetooth-bitrate-manager</code> (no trailing <code>/repo</code>).</p>
+
+          <h3>Install the app:</h3>
+          <pre>flatpak install --user bluetooth-bitrate com.github.ezrakhuzadi.BluetoothBitrateManager</pre>
+
+          <h3>Run the app:</h3>
+          <pre>flatpak run com.github.ezrakhuzadi.BluetoothBitrateManager</pre>
+
+          <h2>Direct Download</h2>
+          <p>Bundles are available per architecture:</p>
+          <ul>
+            <li><a href="com.github.ezrakhuzadi.BluetoothBitrateManager-x86_64.flatpak">x86_64 bundle</a></li>
+            <li><a href="com.github.ezrakhuzadi.BluetoothBitrateManager-aarch64.flatpak">aarch64 bundle</a></li>
+          </ul>
+          <p>The legacy <a href="com.github.ezrakhuzadi.BluetoothBitrateManager.flatpak">com.github.ezrakhuzadi.BluetoothBitrateManager.flatpak</a> link continues to serve the x86_64 build for backward compatibility.</p>
+          <p>Install with: <code>flatpak install ./com.github.ezrakhuzadi.BluetoothBitrateManager-&lt;arch&gt;.flatpak</code></p>
+
+          <h2>Source Code</h2>
+          <p><a href="https://github.com/ezrakhuzadi/bluetooth-bitrate-manager">GitHub Repository</a></p>
+        </body>
+        </html>
+        HTML
+
+    - name: Export public signing key
+      run: |
+        cd flatpak-build
+        gpg --batch --homedir "${GNUPGHOME}" --export --armor "${FLATPAK_GPG_KEY_ID}" > repo/bluetooth-bitrate.gpg
+
+    - name: Copy bundle to repo
+      run: |
+        cp flatpak-build/com.github.ezrakhuzadi.BluetoothBitrateManager*.flatpak flatpak-build/repo/
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: flatpak-build/repo
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

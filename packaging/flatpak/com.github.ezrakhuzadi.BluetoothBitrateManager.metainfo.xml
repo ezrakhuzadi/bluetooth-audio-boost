@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.github.ezrakhuzadi.BluetoothBitrateManager</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Bluetooth Bitrate Manager</name>
+  <summary>Monitor and manage PipeWire Bluetooth audio codecs</summary>
+
+  <description>
+    <p>
+      Bluetooth Bitrate Manager is a GTK4 application that monitors and manages
+      PipeWire Bluetooth audio codecs with real-time bitrate information.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Monitor active Bluetooth audio codec and bitrate in real-time</li>
+      <li>Support for SBC, AAC, aptX, LDAC, and LC3 codecs</li>
+      <li>Optional high-bitpool SBC rebuild for improved audio quality</li>
+      <li>Command-line interface for scripting and automation</li>
+      <li>Modern GTK4 and libadwaita interface</li>
+      <li>Seamless PipeWire integration</li>
+    </ul>
+  </description>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main application window showing codec information</caption>
+      <!-- Add screenshot URL here when available -->
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/ezrakhuzadi/bluetooth-bitrate-manager</url>
+  <url type="bugtracker">https://github.com/ezrakhuzadi/bluetooth-bitrate-manager/issues</url>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.1.0" date="2025-10-17">
+      <description>
+        <p>Initial release</p>
+        <ul>
+          <li>Real-time Bluetooth codec monitoring</li>
+          <li>GTK4 GUI and CLI tools</li>
+          <li>PipeWire integration</li>
+          <li>Optional SBC high-bitpool rebuild</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <kudos>
+    <kudo>ModernToolkit</kudo>
+    <kudo>HiDpiIcon</kudo>
+  </kudos>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+  </categories>
+
+  <keywords>
+    <keyword>bluetooth</keyword>
+    <keyword>audio</keyword>
+    <keyword>pipewire</keyword>
+    <keyword>codec</keyword>
+    <keyword>bitrate</keyword>
+    <keyword>sbc</keyword>
+    <keyword>aac</keyword>
+    <keyword>aptx</keyword>
+    <keyword>ldac</keyword>
+  </keywords>
+
+  <launchable type="desktop-id">com.github.ezrakhuzadi.BluetoothBitrateManager.desktop</launchable>
+  <provides>
+    <binary>bluetooth-bitrate-gui</binary>
+    <binary>bluetooth-bitrate-manager</binary>
+    <binary>bt-bitrate-monitor</binary>
+  </provides>
+
+  <developer_name>Ezra Khuzadi</developer_name>
+</component>

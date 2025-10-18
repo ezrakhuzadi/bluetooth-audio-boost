@@ -2,8 +2,18 @@
 
 Bluetooth Bitrate Manager is a GTK4/Libadwaita desktop companion and CLI monitor that surfaces real-time codec stats for your Bluetooth audio devices on PipeWire. It also ships an opt-in builder that patches PipeWire's SBC plugin for higher bitpool values while keeping the original binary backed up.
 
+## Screenshots
+
+<p align="center">
+  <img src="https://i.imgur.com/0M6h4jg.png" alt="Bluetooth Bitrate Manager GUI showing negotiated codec and bitrate" width="48%">
+  <img src="https://i.imgur.com/wYLJubU.png" alt="bt-bitrate-monitor CLI output" width="48%">
+  <br>
+  <em>GTK4 app (left) and terminal monitor (right) showing real-time SBC parameters.</em>
+</p>
+
 ## Table of contents
 - [Highlights](#highlights)
+- [Screenshots](#screenshots)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -29,7 +39,50 @@ Bluetooth Bitrate Manager is a GTK4/Libadwaita desktop companion and CLI monitor
 
 ## Installation
 
-### Option 1 - install script (recommended)
+### Option 1 - Flatpak (recommended)
+
+The easiest way to install with automatic updates:
+
+```bash
+wget https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/bluetooth-bitrate.gpg
+flatpak remote-add --user --gpg-import=bluetooth-bitrate.gpg bluetooth-bitrate https://ezrakhuzadi.github.io/bluetooth-bitrate-manager
+flatpak install --user bluetooth-bitrate com.github.ezrakhuzadi.BluetoothBitrateManager
+```
+
+See [FLATPAK.md](FLATPAK.md) for more details.
+
+### Option 2 - Nix flake
+
+The repository exposes a flake that packages the app similarly to the Arch package.
+
+Install it into your profile:
+
+```bash
+nix profile install github:ezrakhuzadi/bluetooth-bitrate-manager#bluetooth-bitrate-manager
+```
+
+Or run it ad-hoc without installing:
+
+```bash
+nix run github:ezrakhuzadi/bluetooth-bitrate-manager
+```
+
+### Option 3 - Arch Linux (AUR)
+
+Available as an AUR package maintained in this repository:
+
+```bash
+# with paru
+paru -S bluetooth-bitrate-manager
+
+# or with yay
+yay -S bluetooth-bitrate-manager
+```
+
+> The package installs the GTK application, CLI tools, and optional SBC rebuild
+> helper. It also ships the .desktop launcher and icon.
+
+### Option 4 - install script (distro packages + user site)
 The repository ships `install.sh`, which requests sudo once, installs missing system dependencies, and performs a user-level pip install:
 
 ```bash
@@ -37,18 +90,6 @@ The repository ships `install.sh`, which requests sudo once, installs missing sy
 ```
 
 The script keeps the sudo ticket alive during the install and drops a `.desktop` launcher into `~/.local/share/applications/`.
-
-### Option 2 - pipx
-```bash
-pipx install bluetooth-bitrate-manager
-```
-
-You may still need to install the GTK runtime packages via your distribution if they are not present.
-
-### Option 3 - pip (user site)
-```bash
-python3 -m pip install --user bluetooth-bitrate-manager
-```
 
 After installation the following entry points are available on your PATH:
 - `bluetooth-bitrate-gui` - start the GTK application.

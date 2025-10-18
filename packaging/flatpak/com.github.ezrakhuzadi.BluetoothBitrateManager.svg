@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" version="1.1" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="58" fill="url(#gradient)" stroke="#2C5F8D" stroke-width="3"/>
+
+  <!-- Bluetooth symbol -->
+  <g transform="translate(64, 64)">
+    <!-- Main vertical line -->
+    <path d="M 0,-32 L 0,32" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Top triangle -->
+    <path d="M 0,-32 L 18,-16 L 0,0 Z" fill="#FFFFFF"/>
+
+    <!-- Bottom triangle -->
+    <path d="M 0,0 L 18,16 L 0,32 Z" fill="#FFFFFF"/>
+
+    <!-- Cross lines -->
+    <path d="M -14,-16 L 18,16" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M -14,16 L 18,-16" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- Signal strength bars (representing bitrate/audio) -->
+  <g transform="translate(92, 94)" opacity="0.9">
+    <rect x="0" y="8" width="6" height="8" fill="#FFFFFF" rx="1"/>
+    <rect x="8" y="4" width="6" height="12" fill="#FFFFFF" rx="1"/>
+    <rect x="16" y="0" width="6" height="16" fill="#FFFFFF" rx="1"/>
+  </g>
+</svg>

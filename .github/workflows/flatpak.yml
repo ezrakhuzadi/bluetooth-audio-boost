@@ -106,6 +106,10 @@ jobs:
               - install -Dm755 /usr/bin/ninja ${FLATPAK_DEST}/bin/ninja
               - install -Dm755 /usr/bin/pkg-config ${FLATPAK_DEST}/bin/pkg-config
               - install -Dm755 /usr/bin/pkgconf ${FLATPAK_DEST}/bin/pkgconf
+              # Copy meson Python modules
+              - mkdir -p ${FLATPAK_DEST}/lib/python3.12/site-packages/
+              - cp -a /usr/lib/python3.12/site-packages/mesonbuild ${FLATPAK_DEST}/lib/python3.12/site-packages/
+              - cp -a /usr/lib/python3.12/site-packages/meson-*.dist-info ${FLATPAK_DEST}/lib/python3.12/site-packages/ || true
               # Copy gcc and required tools
               - cp -a /usr/bin/gcc* ${FLATPAK_DEST}/bin/
               - cp -a /usr/bin/g++* ${FLATPAK_DEST}/bin/ || true

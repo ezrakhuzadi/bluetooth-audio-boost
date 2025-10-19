@@ -35,6 +35,16 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="0.3.1" date="2025-10-19">
+      <description>
+        <p>Fix Flatpak codec rebuild feature</p>
+        <ul>
+          <li>Bundle meson Python modules in Flatpak for codec rebuild</li>
+          <li>Add PYTHONPATH configuration for flatpak-spawn build tools</li>
+          <li>Codec rebuild now works without requiring host build tools</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2025-10-18">
       <description>
         <p>Complete Flatpak installation fix</p>

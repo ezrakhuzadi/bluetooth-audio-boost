@@ -19,7 +19,7 @@
 
         bluetooth-bitrate-manager = pythonPackages.buildPythonApplication rec {
           pname = "bluetooth-bitrate-manager";
-          version = "0.3.0";
+          version = "0.3.1";
 
           pyproject = true;
           src = self;

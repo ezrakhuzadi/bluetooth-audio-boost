@@ -1,6 +1,7 @@
 # Build artifacts
 build/
 dist/
+flatpak-build/
 
 # Python packaging metadata
 *.egg-info/

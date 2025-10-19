@@ -14,7 +14,7 @@ jobs:
       id-token: write
     env:
       ARCHES: "x86_64 aarch64"
-      RUNTIME_VERSION: "49"
+      RUNTIME_VERSION: "48"
 
     steps:
     - name: Checkout repository
@@ -80,7 +80,7 @@ jobs:
         cat > flatpak-build/com.github.ezrakhuzadi.BluetoothBitrateManager.yml <<'EOF'
         app-id: com.github.ezrakhuzadi.BluetoothBitrateManager
         runtime: org.gnome.Platform
-        runtime-version: '49'
+        runtime-version: '48'
         sdk: org.gnome.Sdk
         command: bluetooth-bitrate-gui
 
@@ -97,6 +97,26 @@ jobs:
           - --device=all
 
         modules:
+          - name: build-tools
+            buildsystem: simple
+            build-commands:
+              # Install meson, ninja, and pkgconf into /app/bin so they're available
+              # when build script runs via flatpak-spawn
+              - install -Dm755 /usr/bin/meson ${FLATPAK_DEST}/bin/meson
+              - install -Dm755 /usr/bin/ninja ${FLATPAK_DEST}/bin/ninja
+              - install -Dm755 /usr/bin/pkg-config ${FLATPAK_DEST}/bin/pkg-config
+              - install -Dm755 /usr/bin/pkgconf ${FLATPAK_DEST}/bin/pkgconf
+              # Copy gcc and required tools
+              - cp -a /usr/bin/gcc* ${FLATPAK_DEST}/bin/
+              - cp -a /usr/bin/g++* ${FLATPAK_DEST}/bin/ || true
+              - cp -a /usr/bin/cc ${FLATPAK_DEST}/bin/ || true
+              - cp -a /usr/bin/c++ ${FLATPAK_DEST}/bin/ || true
+              - cp -a /usr/bin/cpp* ${FLATPAK_DEST}/bin/ || true
+              - cp -a /usr/bin/ar ${FLATPAK_DEST}/bin/ || true
+              - cp -a /usr/bin/as ${FLATPAK_DEST}/bin/ || true
+              - cp -a /usr/bin/ld* ${FLATPAK_DEST}/bin/ || true
+              - cp -a /usr/bin/git ${FLATPAK_DEST}/bin/ || true
+
           - name: bluetooth-bitrate-manager
             buildsystem: simple
             build-commands:
@@ -148,7 +168,12 @@ jobs:
         cd flatpak-build
         for arch in $ARCHES; do
           bundle="com.github.ezrakhuzadi.BluetoothBitrateManager-${arch}.flatpak"
-          flatpak build-bundle repo "${bundle}" com.github.ezrakhuzadi.BluetoothBitrateManager --arch="${arch}"
+          flatpak build-bundle \
+            --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
+            repo \
+            "${bundle}" \
+            com.github.ezrakhuzadi.BluetoothBitrateManager \
+            --arch="${arch}"
         done
         cp com.github.ezrakhuzadi.BluetoothBitrateManager-x86_64.flatpak com.github.ezrakhuzadi.BluetoothBitrateManager.flatpak
 
@@ -175,13 +200,8 @@ jobs:
 
           <h2>Installation</h2>
 
-          <h3>Download signing key:</h3>
-          <pre>wget https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/bluetooth-bitrate.gpg</pre>
-
-          <h3>Add this repository:</h3>
-          <pre>flatpak remote-add --user --gpg-import=bluetooth-bitrate.gpg bluetooth-bitrate https://ezrakhuzadi.github.io/bluetooth-bitrate-manager</pre>
-
-          <p><strong>Note:</strong> All repository files are served from <code>https://ezrakhuzadi.github.io/bluetooth-bitrate-manager</code> (no trailing <code>/repo</code>).</p>
+          <h3>Add repository (automatically configures runtime dependencies):</h3>
+          <pre>flatpak remote-add --user --if-not-exists bluetooth-bitrate https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/bluetooth-bitrate.flatpakrepo</pre>
 
           <h3>Install the app:</h3>
           <pre>flatpak install --user bluetooth-bitrate com.github.ezrakhuzadi.BluetoothBitrateManager</pre>
@@ -208,6 +228,36 @@ jobs:
       run: |
         cd flatpak-build
         gpg --batch --homedir "${GNUPGHOME}" --export --armor "${FLATPAK_GPG_KEY_ID}" > repo/bluetooth-bitrate.gpg
+
+    - name: Create flatpakrepo and flatpakref files
+      run: |
+        cd flatpak-build/repo
+        # Export GPG key in base64 format for flatpakrepo
+        GPG_KEY_BASE64=$(gpg --batch --homedir "${GNUPGHOME}" --export "${FLATPAK_GPG_KEY_ID}" | base64 -w0)
+
+        # Create .flatpakrepo
+        cat > bluetooth-bitrate.flatpakrepo <<EOF
+        [Flatpak Repo]
+        Title=Bluetooth Bitrate Manager
+        Url=https://ezrakhuzadi.github.io/bluetooth-bitrate-manager
+        Homepage=https://github.com/ezrakhuzadi/bluetooth-bitrate-manager
+        Comment=Monitor and manage PipeWire Bluetooth audio codecs
+        Description=GTK4 application for monitoring Bluetooth audio codecs
+        GPGKey=${GPG_KEY_BASE64}
+        DefaultBranch=master
+        RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo
+        EOF
+
+        # Create .flatpakref for one-command install
+        cat > com.github.ezrakhuzadi.BluetoothBitrateManager.flatpakref <<EOF
+        [Flatpak Ref]
+        Title=Bluetooth Bitrate Manager
+        Name=com.github.ezrakhuzadi.BluetoothBitrateManager
+        Branch=master
+        Url=https://ezrakhuzadi.github.io/bluetooth-bitrate-manager
+        RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo
+        GPGKey=${GPG_KEY_BASE64}
+        EOF
 
     - name: Copy bundle to repo
       run: |

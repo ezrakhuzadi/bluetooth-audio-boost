@@ -1,26 +1,16 @@
 # Flatpak Installation
 
-## Automatic Repository (Recommended)
+## Quick Install (Recommended)
 
-This repository automatically builds and publishes Flatpak packages to GitHub Pages on every commit.
-
-### Add the repository:
-Download the public key first:
+**One command that actually works:**
 ```bash
-wget https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/bluetooth-bitrate.gpg
+flatpak install --user https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/com.github.ezrakhuzadi.BluetoothBitrateManager.flatpakref
 ```
 
-Then add the remote:
-```bash
-flatpak remote-add --user --gpg-import=bluetooth-bitrate.gpg bluetooth-bitrate https://ezrakhuzadi.github.io/bluetooth-bitrate-manager
-```
-
-### Install the app:
-```bash
-flatpak install --user bluetooth-bitrate com.github.ezrakhuzadi.BluetoothBitrateManager
-```
-
-> Note: The repository is hosted directly at `https://ezrakhuzadi.github.io/bluetooth-bitrate-manager` (without a `/repo` suffix).
+This automatically:
+- Adds the app repository with GPG verification
+- Adds Flathub (for the GNOME runtime) if you don't already have it
+- Installs the app and all dependencies
 
 ### Run the app:
 ```bash
@@ -32,16 +22,36 @@ flatpak run com.github.ezrakhuzadi.BluetoothBitrateManager
 flatpak update com.github.ezrakhuzadi.BluetoothBitrateManager
 ```
 
-## Direct Download
+---
 
-Download the latest `.flatpak` bundles from:
-- https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/com.github.ezrakhuzadi.BluetoothBitrateManager-x86_64.flatpak
-- https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/com.github.ezrakhuzadi.BluetoothBitrateManager-aarch64.flatpak
+## Alternative Install Methods
 
-Install with:
+### Option 1: Direct Bundle (Offline Install)
+
+Download and install a `.flatpak` bundle:
+- **x86_64**: https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/com.github.ezrakhuzadi.BluetoothBitrateManager-x86_64.flatpak
+- **aarch64**: https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/com.github.ezrakhuzadi.BluetoothBitrateManager-aarch64.flatpak
+
 ```bash
-flatpak install ./com.github.ezrakhuzadi.BluetoothBitrateManager-<arch>.flatpak
+flatpak install --user https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/com.github.ezrakhuzadi.BluetoothBitrateManager-x86_64.flatpak
 ```
+
+### Option 2: Manual Repository Setup (Advanced)
+
+If you prefer to add the remote manually:
+
+```bash
+# Add Flathub first (if not already present in your user installation)
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+# Add the app repository
+flatpak remote-add --user --if-not-exists bluetooth-bitrate https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/bluetooth-bitrate.flatpakrepo
+
+# Install the app
+flatpak install --user bluetooth-bitrate com.github.ezrakhuzadi.BluetoothBitrateManager
+```
+
+**Important:** The manual method requires Flathub to be added to the **same installation** (user or system) you're installing the app to. If you use `--user` for the app, add Flathub with `--user` too.
 
 ## Build Requirements for SBC Rebuild
 

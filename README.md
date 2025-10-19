@@ -41,15 +41,15 @@ Bluetooth Bitrate Manager is a GTK4/Libadwaita desktop companion and CLI monitor
 
 ### Option 1 - Flatpak (recommended)
 
-The easiest way to install with automatic updates:
+Install with one command:
 
 ```bash
-wget https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/bluetooth-bitrate.gpg
-flatpak remote-add --user --gpg-import=bluetooth-bitrate.gpg bluetooth-bitrate https://ezrakhuzadi.github.io/bluetooth-bitrate-manager
-flatpak install --user bluetooth-bitrate com.github.ezrakhuzadi.BluetoothBitrateManager
+flatpak install --user https://ezrakhuzadi.github.io/bluetooth-bitrate-manager/com.github.ezrakhuzadi.BluetoothBitrateManager.flatpakref
 ```
 
-See [FLATPAK.md](FLATPAK.md) for more details.
+This automatically sets up the repository, GPG signing, Flathub runtime, and installs the app.
+
+See [FLATPAK.md](FLATPAK.md) for alternative install methods and troubleshooting.
 
 ### Option 2 - Nix flake
 

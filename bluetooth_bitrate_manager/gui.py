@@ -812,12 +812,17 @@ index fc55a03..935a4e0 100644
                             f"Error creating {config_dir}: {mkdir_result.stderr or mkdir_result.stdout}\n"
                         )
                     else:
-                        with tempfile.NamedTemporaryFile("w", delete=False) as tmp_file:
+                        # Create temp file in home dir so it's accessible from host when in Flatpak
+                        temp_dir = Path.home() / ".cache" / "bluetooth-bitrate-manager"
+                        temp_dir.mkdir(parents=True, exist_ok=True)
+                        temp_path = temp_dir / "wireplumber-config.tmp"
+
+                        with open(temp_path, "w") as tmp_file:
                             tmp_file.write(config_content)
-                            temp_path = tmp_file.name
+
                         try:
                             install_result = run_privileged_command(
-                                [BIN_INSTALL, "-m644", temp_path, str(config_path)]
+                                [BIN_INSTALL, "-m644", str(temp_path), str(config_path)]
                             )
                             if install_result.returncode == 0:
                                 GLib.idle_add(
@@ -832,7 +837,7 @@ index fc55a03..935a4e0 100644
                                 )
                         finally:
                             try:
-                                os.unlink(temp_path)
+                                temp_path.unlink(missing_ok=True)
                             except OSError:
                                 pass
                 except RuntimeError as exc:
@@ -876,9 +881,17 @@ index fc55a03..935a4e0 100644
 
                     # Execute on host using flatpak-spawn with env variable
                     # Must use --env to pass environment variables to host
+                    # Expose Flatpak's build tools to host via --forward-fd and path mounting
+                    flatpak_app_path = f"/var/lib/flatpak/app/com.github.ezrakhuzadi.BluetoothBitrateManager/current/active/files/bin"
+                    user_flatpak_path = os.path.expanduser(f"~/.local/share/flatpak/app/com.github.ezrakhuzadi.BluetoothBitrateManager/current/active/files/bin")
+                    # Include git's libexec directory for git-remote-https and other helpers
+                    host_path = f"{user_flatpak_path}:{flatpak_app_path}:/app/bin:/usr/bin:/bin"
+                    git_exec_path = "/usr/lib/git-core"
                     command = [
                         'flatpak-spawn', '--host',
                         '--env=PATCH_FILE=' + str(host_patch),
+                        '--env=PATH=' + host_path,
+                        '--env=GIT_EXEC_PATH=' + git_exec_path,
                         'bash', str(host_build_script)
                     ]
 
@@ -982,6 +995,10 @@ class BluetoothBitrateApp(Adw.Application):
     def __init__(self):
         super().__init__(application_id='com.github.ezrakhuzadi.BluetoothBitrateManager')
         self.window = None
+
+        # Enable dark theme support - follow system preference
+        style_manager = Adw.StyleManager.get_default()
+        style_manager.set_color_scheme(Adw.ColorScheme.PREFER_DARK)
 
     def do_activate(self):
         """Activate the application"""

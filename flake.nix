@@ -19,7 +19,7 @@
 
         bluetooth-bitrate-manager = pythonPackages.buildPythonApplication rec {
           pname = "bluetooth-bitrate-manager";
-          version = "0.1.0";
+          version = "0.3.0";
 
           pyproject = true;
           src = self;
@@ -30,6 +30,7 @@
             pkg-config
             gobject-introspection
             wrapGAppsHook4
+            makeWrapper
           ];
 
           propagatedBuildInputs = [
@@ -44,11 +45,15 @@
             adwaita-icon-theme
             pipewire
             wireplumber
+            sbc  # SBC codec library needed for building SBC module
+            bluez  # BlueZ library for Bluetooth audio support
+            dbus
+            systemd
           ];
 
           # Ensure CLI helpers referenced by the GUI (pactl, git, meson, etc.)
           # stay accessible when the wrapped binaries run.
-          gappsWrapperArgs = let
+          makeWrapperArgs = let
             runtimePath = lib.makeBinPath [
               pkgs.pulseaudio
               pkgs.pipewire
@@ -65,9 +70,19 @@
               pkgs.gnugrep
               pkgs.gnused
               pkgs.util-linux
+              pkgs.dbus
+            ];
+            pkgConfigPath = lib.makeSearchPathOutput "dev" "lib/pkgconfig" [
+              pkgs.dbus
+              pkgs.systemd
+              pkgs.glib
+              pkgs.pipewire
+              pkgs.sbc
+              pkgs.bluez
             ];
           in [
-            "--prefix" "PATH" ":" runtimePath
+            "--prefix PATH : ${runtimePath}"
+            "--set PKG_CONFIG_PATH ${pkgConfigPath}"
           ];
 
           postInstall = ''
